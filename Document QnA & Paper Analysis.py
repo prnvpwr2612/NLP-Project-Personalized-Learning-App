@@ -16,7 +16,7 @@ st.set_page_config(page_title="Research Paper Analyzer", layout="wide")
 @st.cache_resource
 def initialize_gemini_api(api_key):
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel('gemini-pro')
+    return genai.GenerativeModel('gemini-1.5-pro')
 
 def generate_with_backoff(model, prompt, max_retries=5, initial_delay=1):
     for attempt in range(max_retries):
