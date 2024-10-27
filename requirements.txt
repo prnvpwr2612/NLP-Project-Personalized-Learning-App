@@ -1,0 +1,9 @@
+PyPDF2
+python-docx
+google-generativeai
+gtts
+streamlit
+requests
+datetime
+pandas
+pillow
