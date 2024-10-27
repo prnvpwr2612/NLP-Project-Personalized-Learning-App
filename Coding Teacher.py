@@ -8,7 +8,7 @@ import random
 import re
 
 # Configure page layout
-st.set_page_config(layout="wide", page_title="Personalized Learning Platform")
+st.set_page_config(layout="wide", page_title="Personalized Learning Platform", initial_sidebar_state="expanded")
 
 # Initialize session state
 def initialize_session_state():
@@ -35,7 +35,7 @@ def authenticate(username, password):
 
 # Function to query the Gemini API
 def query_gemini_api(prompt, api_key, max_retries=3):
-    genai.configure(api_key=api_key)
+    genai.configure(api_key='AIzaSyC3faCZn9_0Kj_Aw7pOhw8jqGndbYiTH8M')
     model = genai.GenerativeModel('gemini-1.5-pro')
     
     for attempt in range(max_retries):
@@ -254,59 +254,165 @@ def login_page():
 
 # Main application
 def main_app():
-    st.title("Personalized Learning Platform")
+    # Top metrics with improved layout
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📚 Total Courses", len(st.session_state.conversations), 
+                 delta="Active", delta_color="normal")
+    with col2:
+        total_tests = sum(len(tests) for tests in st.session_state.tests.values())
+        st.metric("📝 Total Tests", total_tests, 
+                 delta="Available", delta_color="normal")
+    with col3:
+        completed_tests = sum(
+            sum(1 for test in tests if test.get('score', 'Not taken') != 'Not taken')
+            for tests in st.session_state.tests.values()
+        )
+        st.metric("✅ Completed Tests", completed_tests,
+                 delta=f"{completed_tests}/{total_tests}", delta_color="normal")
+    with col4:
+        total_flashcards = sum(len(cards) for cards in st.session_state.flashcards.values())
+        st.metric("🗂 Total Flashcards", total_flashcards, 
+                 delta="Created", delta_color="normal")
     
-    # Sidebar
+    st.markdown("""
+        <h1 style='text-align: center; color: #1f77b4; padding: 20px;'>
+            🎓 Personalized Learning Platform
+        </h1>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar with improved visual hierarchy
     with st.sidebar:
-        st.title("Menu")
-        menu = st.radio("Select:", ["Home", "Coding Courses", "Tests", "Flashcards"])
+        st.markdown("# 📚 Menu")
         
-        if menu == "Coding Courses":
-            st.subheader("Coding Courses")
-            for lang in st.session_state.conversations:
-                if st.button(lang, key=f"course_{lang}"):
-                    st.session_state.current_course = lang
-                    st.rerun()
-            if st.button("+ New Course", key="new_course_button"):
-                st.session_state.new_course = True
-                st.rerun()
+        # Create larger clickable areas for menu items using containers
+        menu_options = ["🏠 Home", "💻 Coding Courses", "📝 Tests", "🗂 Flashcards"]
+        menu = None
         
-        elif menu == "Tests":
-            st.subheader("Tests")
+        # Create a container for each menu option
+        for option in menu_options:
+            # Use columns to create a wider clickable area
+            col1, padding = st.columns([4, 1])
+            with col1:
+                # Create a container for the menu item
+                menu_container = st.container()
+                with menu_container:
+                    if st.button(option, key=f"menu_{option}", use_container_width=True):
+                        menu = option
+                        st.session_state.current_menu = option
+        
+        menu = st.session_state.get('current_menu', "🏠 Home")
+        
+        st.markdown("---")
+        
+        if "Coding Courses" in menu:
+            st.markdown("### 💻 Coding Courses")
             for lang in st.session_state.conversations:
-                with st.expander(lang):
-                    for test in st.session_state.tests.get(lang, []):
-                        if st.button(f"Test {test['number']}", key=f"test_{lang}_{test['number']}"):
-                            st.session_state.current_test = (lang, test['number'])
+                # Create a container for each course
+                course_container = st.container()
+                with course_container:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        # Make the entire container clickable
+                        if st.button(f"📘 {lang}", 
+                                   key=f"course_{lang}",
+                                   use_container_width=True,
+                                   type="primary" if st.session_state.get('current_course') == lang else "secondary"):
+                            st.session_state.current_course = lang
                             st.rerun()
-                    if st.button("+ New Test", key=f"new_test_{lang}"):
-                        st.session_state.new_test = lang
-                        st.rerun()
-        
-        elif menu == "Flashcards":
-            st.subheader("Flashcards")
-            for lang in st.session_state.flashcards:
-                if st.button(f"{lang} Flashcards", key=f"flashcards_{lang}"):
-                    st.session_state.current_flashcards = lang
+                    with col2:
+                        st.markdown(f"<p style='text-align: center;'>{len(st.session_state.conversations[lang])} lessons</p>", 
+                                  unsafe_allow_html=True)
+            
+            st.markdown("---")
+            # Create a container for the new course button
+            new_course_container = st.container()
+            with new_course_container:
+                if st.button("➕ New Course", 
+                            key="new_course_button",
+                            use_container_width=True,
+                            type="secondary"):
+                    st.session_state.new_course = True
                     st.rerun()
+        
+        elif "Tests" in menu:
+            st.markdown("### 📝 Tests")
+            for lang in st.session_state.conversations:
+                with st.expander(f"📚 {lang}", expanded=True):
+                    lang_tests = st.session_state.tests.get(lang, [])
+                    completed_lang_tests = sum(1 for test in lang_tests if test.get('score', 'Not taken') != 'Not taken')
+                    st.markdown(f"Completed: {completed_lang_tests}/{len(lang_tests)}")
+                    
+                    for test in lang_tests:
+                        # Create a container for each test
+                        test_container = st.container()
+                        with test_container:
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                button_type = "primary" if st.session_state.get('current_test') == (lang, test['number']) else "secondary"
+                                if st.button(f"Test {test['number']}", 
+                                           key=f"test_{lang}_{test['number']}", 
+                                           use_container_width=True,
+                                           type=button_type):
+                                    st.session_state.current_test = (lang, test['number'])
+                                    st.rerun()
+                            with col2:
+                                score = test.get('score', 'Not taken')
+                                st.write(score)
+                    
+                    # Create a container for the new test button
+                    new_test_container = st.container()
+                    with new_test_container:
+                        if st.button("➕ New Test", 
+                                   key=f"new_test_{lang}", 
+                                   use_container_width=True,
+                                   type="secondary"):
+                            st.session_state.new_test = lang
+                            st.rerun()
+        
+        elif "Flashcards" in menu:
+            st.markdown("### 🗂 Flashcards")
+            for lang in st.session_state.flashcards:
+                # Create a container for each flashcard deck
+                flashcard_container = st.container()
+                with flashcard_container:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        button_type = "primary" if st.session_state.get('current_flashcards') == lang else "secondary"
+                        if st.button(f"📑 {lang}", 
+                                   key=f"flashcards_{lang}", 
+                                   use_container_width=True,
+                                   type=button_type):
+                            st.session_state.current_flashcards = lang
+                            st.rerun()
+                    with col2:
+                        card_count = len(st.session_state.flashcards[lang])
+                        st.write(f"{card_count} cards")
     
-    # Main content area
-    if menu == "Home":
-        display_home()
-    elif menu == "Coding Courses":
-        if hasattr(st.session_state, 'new_course') and st.session_state.new_course:
-            create_new_course()
-        elif st.session_state.current_course:
-            display_course_content(st.session_state.current_course)
-    elif menu == "Tests":
-        if hasattr(st.session_state, 'new_test'):
-            create_new_test(st.session_state.new_test)
-        elif hasattr(st.session_state, 'current_test'):
-            display_test()
-    elif menu == "Flashcards":
-        if hasattr(st.session_state, 'current_flashcards'):
-            display_flashcards()
-
+    # Main content area with enhanced container
+    main_container = st.container()
+    with main_container:
+        if "Home" in menu:
+            display_home()
+        elif "Coding Courses" in menu:
+            if hasattr(st.session_state, 'new_course') and st.session_state.new_course:
+                create_new_course()
+            elif st.session_state.current_course:
+                display_course_content(st.session_state.current_course)
+        elif "Tests" in menu:
+            if hasattr(st.session_state, 'new_test'):
+                create_new_test(st.session_state.new_test)
+            elif hasattr(st.session_state, 'current_test'):
+                display_test()
+        elif "Flashcards" in menu:
+            if hasattr(st.session_state, 'current_flashcards'):
+                display_flashcards()
+    
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center;'>Made with ❤️ by Your Learning Platform</p>",
+        unsafe_allow_html=True
+    )
 def display_home():
     st.header("Welcome to Your Personalized Learning Platform")
     st.write("Here's an overview of your progress:")
@@ -319,41 +425,152 @@ def display_home():
     st.write(f"Total Points: {st.session_state.user_points}")
 
 def create_new_course():
-    st.subheader("Create New Course")
-    
-    if not st.session_state.gemini_api_key:
-        st.session_state.gemini_api_key = st.text_input("Enter your Gemini API key:", type="password", key="api_key_input")
+    # Create main container for new course creation
+    main_container = st.container()
+    with main_container:
+        st.subheader("🎓 Create New Course")
+        
+        # API Key Section
+        api_key_container = st.container()
+        with api_key_container:
+            if not st.session_state.gemini_api_key:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    api_key = st.text_input(
+                        "🔑 Enter your Gemini API key:",
+                        type="password",
+                        key="api_key_input",
+                        placeholder="Paste your API key here",
+                        help="Your API key will be securely stored in the session"
+                    )
+                with col2:
+                    if api_key:
+                        if st.button("✅ Verify Key", use_container_width=True):
+                            st.session_state.gemini_api_key = api_key
+                            genai.configure(api_key=api_key)
+                            st.rerun()
+                
+                if not api_key:
+                    st.info("ℹ️ Please enter your Gemini API key to continue.")
+                    return
+        
+        # Course Configuration Section
         if st.session_state.gemini_api_key:
-            genai.configure(api_key=st.session_state.gemini_api_key)
-        else:
-            st.warning("Please enter your Gemini API key to continue.")
-            return
-    
-    all_languages = ["Python", "JavaScript", "Java", "C++", "C#", "Ruby", "Go", "Swift", "Kotlin", "PHP", "R", "TypeScript", "Scala", "Perl", "Rust", "Dart", "Haskell", "MATLAB"]
-    language = st.selectbox("Select a programming language:", [lang for lang in all_languages if lang not in st.session_state.conversations], key="new_course_language")
-    time_frame = st.number_input("Enter the course duration (days):", min_value=30, max_value=365, value=90, key="new_course_duration")
-    level = st.selectbox("Select your level of study:", ["Beginner", "Intermediate", "Advanced"], key="new_course_level")
-    
-    if st.button("Generate Course", key="generate_course_button"):
-        with st.spinner("Generating course content..."):
-            try:
-                study_plan = generate_study_plan(language, time_frame, level, st.session_state.gemini_api_key)
-                if study_plan:
-                    session_data = {
-                        "study_plan": study_plan,
-                        "start_date": datetime.datetime.now().strftime("%Y-%m-%d"),
-                        "current_day": 1,
-                        "max_day": time_frame,
-                        "level": level
-                    }
-                    st.session_state.conversations[language] = session_data
-                    save_session_data(language, session_data)
-                    st.success(f"Course for {language} created successfully!")
-                    st.session_state.new_course = False
-                    st.session_state.current_course = language
-                    st.rerun()
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+            config_container = st.container()
+            with config_container:
+                # Available languages with visual organization
+                all_languages = [
+                    "Python", "JavaScript", "Java", "C++", "C#",
+                    "Ruby", "Go", "Swift", "Kotlin", "PHP",
+                    "R", "TypeScript", "Scala", "Perl",
+                    "Rust", "Dart", "Haskell", "MATLAB"
+                ]
+                available_languages = [
+                    lang for lang in all_languages 
+                    if lang not in st.session_state.conversations
+                ]
+                
+                # Create three columns for main inputs
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    language_container = st.container()
+                    with language_container:
+                        st.markdown("##### 💻 Programming Language")
+                        language = st.selectbox(
+                            "Select a programming language:",
+                            available_languages,
+                            key="new_course_language",
+                            label_visibility="collapsed",
+                            format_func=lambda x: f"📚 {x}"
+                        )
+                
+                with col2:
+                    duration_container = st.container()
+                    with duration_container:
+                        st.markdown("##### ⏱️ Course Duration")
+                        time_frame = st.number_input(
+                            "Enter the course duration (days):",
+                            min_value=30,
+                            max_value=365,
+                            value=90,
+                            key="new_course_duration",
+                            label_visibility="collapsed",
+                            help="Choose between 30 to 365 days"
+                        )
+                
+                with col3:
+                    level_container = st.container()
+                    with level_container:
+                        st.markdown("##### 📊 Difficulty Level")
+                        level = st.selectbox(
+                            "Select your level of study:",
+                            ["Beginner", "Intermediate", "Advanced"],
+                            key="new_course_level",
+                            label_visibility="collapsed",
+                            format_func=lambda x: f"🎯 {x}"
+                        )
+                
+                # Summary section
+                summary_container = st.container()
+                with summary_container:
+                    st.markdown("---")
+                    st.markdown("#### Course Summary")
+                    sum_col1, sum_col2, sum_col3 = st.columns(3)
+                    with sum_col1:
+                        st.markdown(f"**Language:** 📚 {language}")
+                    with sum_col2:
+                        st.markdown(f"**Duration:** ⏱️ {time_frame} days")
+                    with sum_col3:
+                        st.markdown(f"**Level:** 🎯 {level}")
+                
+                # Action buttons
+                button_container = st.container()
+                with button_container:
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col1:
+                        if st.button("← Back", use_container_width=True):
+                            st.session_state.new_course = False
+                            st.rerun()
+                    with col2:
+                        if st.button("🚀 Generate Course", key="generate_course_button", use_container_width=True, type="primary"):
+                            progress_container = st.container()
+                            with progress_container:
+                                with st.spinner("🔄 Generating your personalized course content..."):
+                                    try:
+                                        study_plan = generate_study_plan(
+                                            language,
+                                            time_frame,
+                                            level,
+                                            st.session_state.gemini_api_key
+                                        )
+                                        
+                                        if study_plan:
+                                            session_data = {
+                                                "study_plan": study_plan,
+                                                "start_date": datetime.datetime.now().strftime("%Y-%m-%d"),
+                                                "current_day": 1,
+                                                "max_day": time_frame,
+                                                "level": level
+                                            }
+                                            st.session_state.conversations[language] = session_data
+                                            save_session_data(language, session_data)
+                                            
+                                            success_container = st.container()
+                                            with success_container:
+                                                st.success(f"🎉 Course for {language} created successfully!")
+                                                st.balloons()
+                                            
+                                            st.session_state.new_course = False
+                                            st.session_state.current_course = language
+                                            st.rerun()
+                                            
+                                    except Exception as e:
+                                        error_container = st.container()
+                                        with error_container:
+                                            st.error(f"❌ An error occurred: {str(e)}")
+                                            st.info("Please try again or contact support if the issue persists.")
     
 def display_course_content(language):
     session_data = st.session_state.conversations[language]
