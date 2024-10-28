@@ -35,7 +35,7 @@ def authenticate(username, password):
 
 # Function to query the Gemini API
 def query_gemini_api(prompt, api_key, max_retries=3):
-    genai.configure(api_key='AIzaSyC3faCZn9_0Kj_Aw7pOhw8jqGndbYiTH8M')
+    genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-1.5-pro')
     
     for attempt in range(max_retries):
