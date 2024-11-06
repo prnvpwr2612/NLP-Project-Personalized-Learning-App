@@ -1,129 +1,83 @@
-"""
-Description
-This is a Natural Language Processing(NLP) Based App useful for basic NLP concepts such as follows;
-+ Tokenization & Lemmatization using Spacy
-+ Named Entity Recognition(NER) using SpaCy
-+ Sentiment Analysis using TextBlob
-+ Document/Text Summarization using Gensim/Sumy
-This is built with Streamlit Framework, an awesome framework for building ML and NLP tools.
-
-Purpose
-To perform basic and useful NLP task with Streamlit,Spacy,Textblob and Gensim/Sumy
-
-"""
-# Core Pkgs
 import streamlit as st
-import os
-
-
-# NLP Pkgs
 from textblob import TextBlob
 import spacy
 import gensim
-import nltk
-nltk.download('punkt')
-
-# Sumy Summary Pkg
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
+from streamlit_extras.mention import mention
+from streamlit_extras.stylable_container import stylable_container
 
-
-# Function for Sumy Summarization
+# Summarization Function
 def sumy_summarizer(docx):
-	parser = PlaintextParser.from_string(docx,Tokenizer("english"))
-	lex_summarizer = LexRankSummarizer()
-	summary = lex_summarizer(parser.document,3)
-	summary_list = [str(sentence) for sentence in summary]
-	result = ' '.join(summary_list)
-	return result
+    parser = PlaintextParser.from_string(docx, Tokenizer("english"))
+    lex_summarizer = LexRankSummarizer()
+    summary = lex_summarizer(parser.document, 3)
+    summary_list = [str(sentence) for sentence in summary]
+    return ' '.join(summary_list)
 
-# Function to Analyse Tokens and Lemma
+# Token and Lemma Analysis
 @st.cache_data
 def text_analyzer(my_text):
-	nlp = spacy.load('en_core_web_sm')
-	docx = nlp(my_text)
-	# tokens = [ token.text for token in docx]
-	allData = [('"Token":{},\n"Lemma":{}'.format(token.text,token.lemma_))for token in docx ]
-	return allData
+    nlp = spacy.load('en_core_web_sm')
+    docx = nlp(my_text)
+    return [{"Token": token.text, "Lemma": token.lemma_} for token in docx]
 
-# Function For Extracting Entities
+# Entity Extraction
 @st.cache_data
 def entity_analyzer(my_text):
-	nlp = spacy.load('en_core_web_sm')
-	docx = nlp(my_text)
-	tokens = [ token.text for token in docx]
-	entities = [(entity.text,entity.label_)for entity in docx.ents]
-	allData = ['"Token":{},\n"Entities":{}'.format(tokens,entities)]
-	return allData
+    nlp = spacy.load('en_core_web_sm')
+    docx = nlp(my_text)
+    return [{"Entity": entity.text, "Label": entity.label_} for entity in docx.ents]
 
-
+# UI Layout and Style
 def main():
-	""" NLP Based App with Streamlit """
+    st.title("✨ Ultimate NLP Application")
+    st.subheader("Empowering Natural Language Processing for All")
+    mention(label="By Pranav Pawar", url="https://github.com/prnvpwr2612", icon="👨‍💻")
 
-	# Title
-	st.title("Ultimate NLP Application")
-	st.subheader("Natural Language Processing for everyone")
-	st.markdown("""
-    	#### Description
-    	+ This is a Natural Language Processing(NLP) Based App useful for basic NLP task
-    	Tokenization , Lemmatization, Named Entity Recognition (NER), Sentiment Analysis, Text Summarization. Built for social good by [Pranav Pawar](https://github.com/prnvpwr2612). Click any of the checkboxes to get started.
-    	""")
+    # Adding Section Styles
+    with stylable_container(key="container", css_styles="""
+            .stButton button {background-color: #4CAF50; color: white; border-radius: 8px;}
+            .stMarkdown p {font-size: 1.1rem; color: #333;}
+            """):
 
-	# Summarization
-	if st.checkbox("Get the summary of your text"):
-		st.subheader("Summarize Your Text")
+        # Summarization Section
+        st.markdown("## Text Summarization")
+        st.markdown("Generate a concise summary of your text:")
+        message = st.text_area("Input Text", "Type or paste text here...")
 
-		message = st.text_area("Enter Text","Type Here....")
-		summary_options = st.selectbox("Choose Summarizer",['sumy','gensim'])
-		if st.button("Summarize"):
-			if summary_options == 'sumy':
-				st.text("Using Sumy Summarizer ..")
-				summary_result = sumy_summarizer(message)
-			elif summary_options == 'gensim':
-				st.text("Using Gensim Summarizer ..")
-				summary_result = summarize(message)
-			else:
-				st.warning("Using Default Summarizer")
-				st.text("Using Gensim Summarizer ..")
-				summary_result = summarize(message)
-			st.success(summary_result)
+        summary_option = st.radio("Choose a Summarizer:", ["Sumy", "Gensim"])
+        if st.button("Summarize"):
+            summary_result = sumy_summarizer(message) if summary_option == "Sumy" else summarize(message)
+            st.write(summary_result)
 
-	# Sentiment Analysis
-	if st.checkbox("Get the Sentiment Score of your text"):
-		st.subheader("Identify Sentiment in your Text")
+        # Sentiment Analysis
+        st.markdown("## Sentiment Analysis")
+        message = st.text_area("Input for Sentiment Analysis", "Type or paste text here...")
+        if st.button("Analyze Sentiment"):
+            blob = TextBlob(message)
+            sentiment = blob.sentiment
+            st.metric("Polarity", sentiment.polarity)
+            st.metric("Subjectivity", sentiment.subjectivity)
 
-		message = st.text_area("Enter Text","Type Here...")
-		if st.button("Analyze"):
-			blob = TextBlob(message)
-			result_sentiment = blob.sentiment
-			st.success(result_sentiment)
+        # Entity Recognition
+        st.markdown("## Named Entity Recognition (NER)")
+        message = st.text_area("Input for NER", "Type or paste text here...")
+        if st.button("Extract Entities"):
+            entities = entity_analyzer(message)
+            st.json(entities)
 
-	# Entity Extraction
-	if st.checkbox("Get the Named Entities of your text"):
-		st.subheader("Identify Entities in your text")
+        # Tokenization & Lemmatization
+        st.markdown("## Tokenization and Lemmatization")
+        message = st.text_area("Input for Tokenization", "Type or paste text here...")
+        if st.button("Tokenize"):
+            tokens = text_analyzer(message)
+            st.json(tokens)
 
-		message = st.text_area("Enter Text","Type Here..")
-		if st.button("Extract"):
-			entity_result = entity_analyzer(message)
-			st.json(entity_result)
+    # Sidebar Info
+    st.sidebar.markdown("## About")
+    st.sidebar.info("This app performs essential NLP tasks using **Streamlit** and **SpaCy**, designed to be user-friendly and interactive.")
 
-	# Tokenization
-	if st.checkbox("Get the Tokens and Lemma of text"):
-		st.subheader("Tokenize Your Text")
-
-		message = st.text_area("Enter Text","Type Here.")
-		if st.button("Analyze"):
-			nlp_result = text_analyzer(message)
-			st.json(nlp_result)
-
-
-
-	st.sidebar.subheader("About the App")
-	st.sidebar.text("NLP for everyone.")
-	st.sidebar.info("Use this tool to get the sentiment score, tokens , lemma, Named Entities and Summary of your text. It's the ultimate!")
-	st.sidebar.subheader("Developed by")
-	st.sidebar.text("PRANAV PAWAR")
-
-if __name__ == '__main__':
-	main()
+if __name__ == "__main__":
+    main()
